@@ -78,7 +78,7 @@ class SingleLinkedList
         /// @brief Оператор проверки итераторов на неравенство
         [[nodiscard]] bool operator!=(const BasicIterator<const Type> &rhs) const noexcept
         {
-            return this->node_ != rhs.node_;
+            return !(this->node_ == rhs.node_);
         }
 
         /// @brief Оператор сравнения итераторов (в роли второго аргумента итератор)
@@ -91,7 +91,7 @@ class SingleLinkedList
         /// @brief Оператор проверки итераторов на неравенство
         [[nodiscard]] bool operator!=(const BasicIterator<Type> &rhs) const noexcept
         {
-            return this->node_ != rhs.node_;
+            return !(this->node_ == rhs.node_);
         }
 
         /// @brief Оператор прединкремента. После его вызова итератор указывает на следующий элемент списка
@@ -99,6 +99,7 @@ class SingleLinkedList
         // Инкремент итератора, не указывающего на существующий элемент списка, приводит к неопределённому поведению
         BasicIterator &operator++() noexcept
         {
+            assert(node_ != nullptr);
             node_ = node_->next_node;
             return *this;
         }
@@ -119,6 +120,7 @@ class SingleLinkedList
         // приводит к неопределённому поведению
         [[nodiscard]] reference operator*() const noexcept
         {
+            assert(node_ != nullptr);
             return node_->value;
         }
 
@@ -157,11 +159,7 @@ public:
     [[nodiscard]] bool IsEmpty() const noexcept
     {
         // Заглушка. Реализуйте метод самостоятельно
-        if (size_ != 0)
-        {
-            return false;
-        }
-        return true;
+        return size_ == 0;
     }
 
     /// @brief  Вставляет элемент value в начало списка за время O(1)
@@ -209,7 +207,8 @@ public:
     /// @brief удаляет из списка элемент, следующий за элементом, на который ссылается переданный в InsertAfter итератор
     Iterator EraseAfter(ConstIterator pos) noexcept
     {
-        assert(!IsEmpty());
+        assert(pos.node_ != nullptr &&
+               pos.node_->next_node != nullptr);
 
         Node *temp = pos.node_->next_node->next_node;
         delete pos.node_->next_node;
@@ -266,33 +265,12 @@ public:
 
     SingleLinkedList(std::initializer_list<Type> values)
     {
-        SingleLinkedList tmp;
-        SingleLinkedList tmp2;
-        for (auto it = values.begin(); it != values.end(); ++it)
-        {
-            tmp.PushFront(*it);
-        }
-        for (auto it = tmp.begin(); it != tmp.end(); ++it)
-        {
-            tmp2.PushFront(*it);
-        }
-        swap(tmp2);
+        Assign(values.begin(), values.end());
     }
 
     SingleLinkedList(const SingleLinkedList &other)
     {
-        assert(size_ == 0 && head_.next_node == nullptr);
-        SingleLinkedList tmp;
-        SingleLinkedList tmp2;
-        for (auto it = other.begin(); it != other.end(); ++it)
-        {
-            tmp.PushFront(*it);
-        }
-        for (auto it = tmp.begin(); it != tmp.end(); ++it)
-        {
-            tmp2.PushFront(*it);
-        }
-        swap(tmp2);
+        Assign(other.begin(), other.end());
     }
 
     SingleLinkedList &operator=(const SingleLinkedList &rhs)
@@ -313,6 +291,22 @@ public:
     }
 
 private:
+    template <typename InputIterator>
+    void Assign(InputIterator from, InputIterator to)
+    {
+        SingleLinkedList<Type> tmp;
+        Node **node_ptr = &tmp.head_.next_node;
+        while (from != to)
+        {
+            assert(*node_ptr == nullptr);
+            *node_ptr = new Node(*from, nullptr);
+            ++tmp.size_;
+            node_ptr = &((*node_ptr)->next_node);
+            ++from;
+        }
+        swap(tmp);
+    }
+
     // Фиктивный узел, используется для вставки "перед первым элементом"
     Node head_;
     size_t size_ = 0;
@@ -334,8 +328,7 @@ bool operator==(const SingleLinkedList<Type> &lhs, const SingleLinkedList<Type> 
 template <typename Type>
 bool operator!=(const SingleLinkedList<Type> &lhs, const SingleLinkedList<Type> &rhs)
 {
-    !std::equal(lhs.begin(), lhs.end(), rhs.begin(), lhs.end());
-    return true;
+    return !(lhs == rhs);
 }
 
 template <typename Type>
